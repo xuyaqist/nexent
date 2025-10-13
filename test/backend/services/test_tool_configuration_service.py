@@ -1,3 +1,5 @@
+from consts.model import ToolInfo, ToolSourceEnum, ToolInstanceInfoRequest, ToolValidateRequest
+from consts.exceptions import MCPConnectionError, NotFoundException, ToolExecutionException
 import asyncio
 import inspect
 import sys
@@ -19,9 +21,7 @@ with patch('backend.database.client.MinioClient', return_value=minio_client_mock
         update_tool_info_impl,
         list_all_tools,
         load_last_tool_config_impl, validate_tool_impl
-)
-from consts.exceptions import MCPConnectionError, NotFoundException, ToolExecutionException
-from consts.model import ToolInfo, ToolSourceEnum, ToolInstanceInfoRequest, ToolValidateRequest
+    )
 
 
 class TestPythonTypeToJsonSchema:
@@ -124,6 +124,7 @@ class TestGetLocalTools:
         mock_tool_class.description = "Test tool description"
         mock_tool_class.inputs = {"input1": "value1"}
         mock_tool_class.output_type = "string"
+        mock_tool_class.category = "test_category"
         mock_tool_class.__name__ = "TestTool"
 
         # create the mock parameter
@@ -1491,7 +1492,7 @@ class TestLoadLastToolConfigImpl:
             inputs={"param": "value"}
         )
 
-        with pytest.raises(ToolExecutionException, match="Validate Tool failed"):
+        with pytest.raises(ToolExecutionException, match="Unsupported tool source: unsupported"):
             await validate_tool_impl(request, "tenant1")
 
     @patch('backend.services.tool_configuration_service._validate_mcp_tool_nexent')
@@ -1507,7 +1508,7 @@ class TestLoadLastToolConfigImpl:
             inputs={"param": "value"}
         )
 
-        with pytest.raises(MCPConnectionError, match="MCP connection failed: Connection failed"):
+        with pytest.raises(MCPConnectionError, match="Connection failed"):
             await validate_tool_impl(request, "tenant1")
 
     @patch('backend.services.tool_configuration_service._validate_local_tool')
@@ -1523,7 +1524,56 @@ class TestLoadLastToolConfigImpl:
             params={"config": "value"}
         )
 
-        with pytest.raises(ToolExecutionException, match="Validate Tool failed"):
+        with pytest.raises(ToolExecutionException, match="Execution failed"):
+            await validate_tool_impl(request, "tenant1")
+
+    @patch('backend.services.tool_configuration_service._validate_mcp_tool_remote')
+    async def test_validate_tool_remote_server_not_found(self, mock_validate_remote):
+        """Test MCP tool validation when remote server not found"""
+        mock_validate_remote.side_effect = NotFoundException(
+            "MCP server not found for name: test_server")
+
+        request = ToolValidateRequest(
+            name="test_tool",
+            source=ToolSourceEnum.MCP.value,
+            usage="test_server",
+            inputs={"param": "value"}
+        )
+
+        with pytest.raises(NotFoundException, match="MCP server not found for name: test_server"):
+            await validate_tool_impl(request, "tenant1")
+
+    @patch('backend.services.tool_configuration_service._validate_local_tool')
+    async def test_validate_tool_local_tool_not_found(self, mock_validate_local):
+        """Test local tool validation when tool class not found"""
+        mock_validate_local.side_effect = NotFoundException(
+            "Tool class not found for test_tool")
+
+        request = ToolValidateRequest(
+            name="test_tool",
+            source=ToolSourceEnum.LOCAL.value,
+            usage=None,
+            inputs={"param": "value"},
+            params={"config": "value"}
+        )
+
+        with pytest.raises(NotFoundException, match="Tool class not found for test_tool"):
+            await validate_tool_impl(request, "tenant1")
+
+    @patch('backend.services.tool_configuration_service._validate_langchain_tool')
+    async def test_validate_tool_langchain_tool_not_found(self, mock_validate_langchain):
+        """Test LangChain tool validation when tool not found"""
+        mock_validate_langchain.side_effect = NotFoundException(
+            "Tool 'test_tool' not found in LangChain tools")
+
+        request = ToolValidateRequest(
+            name="test_tool",
+            source=ToolSourceEnum.LANGCHAIN.value,
+            usage=None,
+            inputs={"param": "value"}
+        )
+
+        with pytest.raises(NotFoundException, match="Tool 'test_tool' not found in LangChain tools"):
             await validate_tool_impl(request, "tenant1")
 
 

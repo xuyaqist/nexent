@@ -12,13 +12,13 @@ import {
 } from "@ant-design/icons";
 
 import { TOOL_SOURCE_TYPES } from "@/const/agentConfig";
-import {
-  Tooltip,
-  TooltipTrigger,
-  TooltipContent,
-} from "@/components/ui/tooltip";
 import log from "@/lib/logger";
-import { Tool, ToolPoolProps, ToolGroup } from "@/types/agentConfig";
+import {
+  Tool,
+  ToolPoolProps,
+  ToolGroup,
+  ToolSubGroup,
+} from "@/types/agentConfig";
 import {
   fetchTools,
   searchToolConfig,
@@ -56,6 +56,7 @@ function ToolPool({
   const [isMcpModalOpen, setIsMcpModalOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [activeTabKey, setActiveTabKey] = useState<string>("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("");
 
   // Use useMemo to cache tool grouping
   const toolGroups = useMemo(() => {
@@ -100,6 +101,37 @@ function ToolPool({
         return a.create_time.localeCompare(b.create_time);
       });
 
+      // Create secondary grouping for local tools
+      let subGroups: ToolSubGroup[] | undefined;
+      if (key === TOOL_SOURCE_TYPES.LOCAL) {
+        const categoryMap = new Map<string, Tool[]>();
+
+        sortedTools.forEach((tool) => {
+          const category =
+            tool.category && tool.category.trim() !== ""
+              ? tool.category
+              : t("toolPool.category.other");
+          if (!categoryMap.has(category)) {
+            categoryMap.set(category, []);
+          }
+          categoryMap.get(category)!.push(tool);
+        });
+
+        subGroups = Array.from(categoryMap.entries())
+          .map(([category, categoryTools]) => ({
+            key: category,
+            label: category,
+            tools: categoryTools.sort((a, b) => a.name.localeCompare(b.name)), // Sort by name alphabetically
+          }))
+          .sort((a, b) => {
+            // Put "Other" category at the end
+            const otherKey = t("toolPool.category.other");
+            if (a.key === otherKey) return 1;
+            if (b.key === otherKey) return -1;
+            return a.label.localeCompare(b.label); // Sort other categories alphabetically
+          });
+      }
+
       groups.push({
         key,
         label: key.startsWith("mcp-")
@@ -110,6 +142,7 @@ function ToolPool({
           ? t("toolPool.group.langchain")
           : key,
         tools: sortedTools,
+        subGroups,
       });
     });
 
@@ -131,6 +164,20 @@ function ToolPool({
       setActiveTabKey(toolGroups[0].key);
     }
   }, [toolGroups, activeTabKey]);
+
+  // Set default category selection for local tools
+  useEffect(() => {
+    const localGroup = toolGroups.find(
+      (group) => group.key === TOOL_SOURCE_TYPES.LOCAL
+    );
+    if (
+      localGroup?.subGroups &&
+      localGroup.subGroups.length > 0 &&
+      !selectedCategory
+    ) {
+      setSelectedCategory(localGroup.subGroups[0].key);
+    }
+  }, [toolGroups, selectedCategory]);
 
   // Use useMemo to cache the selected tool ID set to improve lookup efficiency
   const selectedToolIds = useMemo(() => {
@@ -511,17 +558,94 @@ function ToolPool({
       ),
       children: (
         <div
-          className="flex flex-col gap-3 pr-2"
+          className="flex h-full flex-col sm:flex-row"
           style={{
             height: "100%",
-            overflowY: "auto",
-            padding: "8px 0",
-            maxHeight: "100%",
+            overflow: "hidden",
           }}
         >
-          {group.tools.map((tool) => (
-            <ToolItem key={tool.id} tool={tool} />
-          ))}
+          {group.subGroups ? (
+            <>
+              {/* Left sidebar - Category navigation */}
+              <div className="w-auto min-w-fit border-r border-gray-200 flex flex-col hidden sm:flex">
+                <div className="flex-1 overflow-y-auto">
+                  <div className="px-2 py-2">
+                    {/* Individual categories */}
+                    {group.subGroups.map((subGroup) => (
+                      <div key={subGroup.key}>
+                        <div
+                          className={`h-14 flex items-center px-2 cursor-pointer transition-colors ${
+                            selectedCategory === subGroup.key
+                              ? "text-blue-600 font-medium"
+                              : "text-gray-700 font-normal"
+                          }`}
+                          onClick={() => setSelectedCategory(subGroup.key)}
+                        >
+                          <div className="whitespace-nowrap">
+                            {subGroup.label}
+                          </div>
+                        </div>
+                        <div className="border-b border-gray-200 -mx-2"></div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Mobile category selector */}
+              <div className="sm:hidden w-full mb-2">
+                <select
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  className="w-full p-2 text-sm border border-gray-300 rounded-md bg-white"
+                >
+                  {group.subGroups.map((subGroup) => (
+                    <option key={subGroup.key} value={subGroup.key}>
+                      {subGroup.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Right content - Tool list */}
+              <div className="flex-1 overflow-hidden">
+                <div
+                  className="h-full overflow-y-auto p-2"
+                  style={{
+                    maxHeight: "100%",
+                  }}
+                >
+                  {(() => {
+                    const selectedSubGroup = group.subGroups.find(
+                      (sg) => sg.key === selectedCategory
+                    );
+                    return selectedSubGroup ? (
+                      <div className="space-y-2">
+                        {selectedSubGroup.tools.map((tool) => (
+                          <ToolItem key={tool.id} tool={tool} />
+                        ))}
+                      </div>
+                    ) : null;
+                  })()}
+                </div>
+              </div>
+            </>
+          ) : (
+            // Regular layout for non-local tools
+            <div
+              className="flex flex-col gap-3 pr-2 flex-1"
+              style={{
+                height: "100%",
+                overflowY: "auto",
+                padding: "8px 0",
+                maxHeight: "100%",
+              }}
+            >
+              {group.tools.map((tool) => (
+                <ToolItem key={tool.id} tool={tool} />
+              ))}
+            </div>
+          )}
         </div>
       ),
     };

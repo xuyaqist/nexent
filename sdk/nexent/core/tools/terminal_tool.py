@@ -8,6 +8,7 @@ from pydantic import Field
 from smolagents.tools import Tool
 import paramiko
 
+from ..utils.constants import ToolCategory
 from ..utils.observer import MessageObserver, ProcessType
 from ..utils.tools_common_message import ToolSign
 
@@ -28,6 +29,7 @@ class TerminalTool(Tool):
         "timeout": {"type": "integer", "description": "Command timeout in seconds. Default is 30", "default": 30, "nullable": True}
     }
     output_type = "string"
+    category = ToolCategory.TERMINAL.value
 
     tool_sign = ToolSign.TERMINAL_OPERATION.value  # Terminal operation tool identifier
 

@@ -2,7 +2,6 @@ import asyncio
 import importlib
 import inspect
 import json
-import keyword
 import logging
 from typing import Any, List, Optional, Dict
 from urllib.parse import urljoin
@@ -102,6 +101,7 @@ def get_local_tools() -> List[ToolInfo]:
             inputs=json.dumps(getattr(tool_class, 'inputs'),
                               ensure_ascii=False),
             output_type=getattr(tool_class, 'output_type'),
+            category=getattr(tool_class, 'category'),
             class_name=tool_class.__name__,
             usage=None,
             origin_name=getattr(tool_class, 'name')
@@ -162,7 +162,8 @@ def _build_tool_info_from_langchain(obj) -> ToolInfo:
         output_type=output_type,
         class_name=tool_name,
         usage=None,
-        origin_name=tool_name
+        origin_name=tool_name,
+        category=None
     )
     return tool_info
 
@@ -298,7 +299,8 @@ async def get_tool_from_remote_mcp_server(mcp_server_name: str, remote_mcp_serve
                                      output_type="string",
                                      class_name=sanitized_tool_name,
                                      usage=mcp_server_name,
-                                     origin_name=tool.name)
+                                     origin_name=tool.name,
+                                     category=None)
                 tools_info.append(tool_info)
             return tools_info
     except Exception as e:
@@ -351,7 +353,8 @@ async def list_all_tools(tenant_id: str):
             "create_time": tool.get("create_time"),
             "usage": tool.get("usage"),
             "params": tool.get("params", []),
-            "inputs": tool.get("inputs", {})
+            "inputs": tool.get("inputs", {}),
+            "category": tool.get("category")
         }
         formatted_tools.append(formatted_tool)
 
@@ -665,10 +668,10 @@ async def validate_tool_impl(
 
     except NotFoundException as e:
         logger.error(f"Tool not found: {e}")
-        raise NotFoundException(f"Tool not found: {str(e)}")
+        raise NotFoundException(str(e))
     except MCPConnectionError as e:
         logger.error(f"MCP connection failed: {e}")
-        raise MCPConnectionError(f"MCP connection failed: {str(e)}")
+        raise MCPConnectionError(str(e))
     except Exception as e:
         logger.error(f"Validate Tool failed: {e}")
-        raise ToolExecutionException(f"Validate Tool failed: {str(e)}")
+        raise ToolExecutionException(str(e))

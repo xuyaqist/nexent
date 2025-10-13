@@ -6,6 +6,7 @@ from linkup import LinkupClient, LinkupSearchImageResult, LinkupSearchTextResult
 from smolagents.tools import Tool
 from pydantic import Field
 
+from ..utils.constants import ToolCategory
 from ..utils.observer import MessageObserver, ProcessType
 from ..utils.tools_common_message import SearchResultTextMessage, ToolSign
 
@@ -20,6 +21,7 @@ class LinkupSearchTool(Tool):
     )
     inputs = {"query": {"type": "string", "description": "The search query to perform."}}
     output_type = "string"
+    category = ToolCategory.SEARCH.value
     tool_sign = ToolSign.LINKUP_SEARCH.value  # Used to distinguish different index sources in summary
 
     def __init__(

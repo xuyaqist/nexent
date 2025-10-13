@@ -5,6 +5,7 @@ from typing import List
 import requests
 from smolagents.tools import Tool
 
+from ..utils.constants import ToolCategory
 from ..utils.observer import MessageObserver, ProcessType
 from ..utils.tools_common_message import SearchResultTextMessage, ToolSign
 from pydantic import Field
@@ -28,6 +29,7 @@ class KnowledgeBaseSearchTool(Tool):
                               "default": "hybrid", "nullable": True},
               "index_names": {"type": "array", "description": "The list of knowledge base index names to search. If not provided, will search all available knowledge bases.", "nullable": True}}
     output_type = "string"
+    category = ToolCategory.SEARCH.value
 
     tool_sign = ToolSign.KNOWLEDGE_BASE.value  # Used to distinguish different index sources for summaries
 

@@ -6,6 +6,7 @@ from typing import Optional
 from pydantic import Field
 from smolagents.tools import Tool
 
+from ..utils.constants import ToolCategory
 from ..utils.observer import MessageObserver, ProcessType
 from ..utils.tools_common_message import ToolSign
 
@@ -26,6 +27,7 @@ class MoveItemTool(Tool):
         "destination_path": {"type": "string", "description": "Relative path of the destination (e.g., 'backup/file.txt')"}
     }
     output_type = "string"
+    category = ToolCategory.FILE.value
 
     tool_sign = ToolSign.FILE_OPERATION.value  # File operation tool identifier
 

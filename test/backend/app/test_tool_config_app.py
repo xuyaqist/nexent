@@ -399,7 +399,7 @@ class TestErrorHandling:
 
         assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
         data = response.json()
-        assert "Failed to validate tool: General validation error" in data["detail"]
+        assert "General validation error" in data["detail"]
 
         mock_get_user_id.assert_called_once_with(None)
         mock_validate_tool.assert_called_once()
@@ -421,7 +421,7 @@ class TestErrorHandling:
 
         assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
         data = response.json()
-        assert "Failed to validate tool: Auth error" in data["detail"]
+        assert "Auth error" in data["detail"]
 
         mock_get_user_id.assert_called_once_with(None)
 

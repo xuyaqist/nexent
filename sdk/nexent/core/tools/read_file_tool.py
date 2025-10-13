@@ -5,6 +5,7 @@ from typing import Optional
 from pydantic import Field
 from smolagents.tools import Tool
 
+from ..utils.constants import ToolCategory
 from ..utils.observer import MessageObserver, ProcessType
 from ..utils.tools_common_message import ToolSign
 
@@ -25,6 +26,7 @@ class ReadFileTool(Tool):
         "encoding": {"type": "string", "description": "File encoding, defaults to utf-8", "default": "utf-8", "nullable": True}
     }
     output_type = "string"
+    category = ToolCategory.FILE.value
 
     tool_sign = ToolSign.FILE_OPERATION.value  # File operation tool identifier
 

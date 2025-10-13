@@ -51,6 +51,9 @@ export default function ToolConfigModal({
   const [parsedInputs, setParsedInputs] = useState<Record<string, any>>({});
   const [paramValues, setParamValues] = useState<Record<string, string>>({});
   const [dynamicInputParams, setDynamicInputParams] = useState<string[]>([]);
+  const [windowWidth, setWindowWidth] = useState<number>(0);
+  const [mainModalTop, setMainModalTop] = useState<number>(0);
+  const [mainModalRight, setMainModalRight] = useState<number>(0);
 
   // load tool config
   useEffect(() => {
@@ -117,6 +120,55 @@ export default function ToolConfigModal({
       setCurrentParams([]);
     }
   }, [isOpen, tool, mainAgentId, t]);
+
+  // Monitor window width for responsive positioning
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowWidth(window.innerWidth);
+    };
+
+    // Set initial width
+    setWindowWidth(window.innerWidth);
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  // Calculate main modal position for tool test panel alignment
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const calculateMainModalPosition = () => {
+      const modalElement = document.querySelector(".ant-modal");
+      if (modalElement) {
+        const rect = modalElement.getBoundingClientRect();
+        setMainModalTop(rect.top);
+        setMainModalRight(rect.right);
+      }
+    };
+
+    // Delay calculation to ensure Modal is rendered
+    const timeoutId = setTimeout(calculateMainModalPosition, 100);
+
+    // Use ResizeObserver to track modal size changes
+    const observer = new ResizeObserver((entries) => {
+      for (let entry of entries) {
+        const rect = entry.target.getBoundingClientRect();
+        setMainModalTop(rect.top);
+        setMainModalRight(rect.right);
+      }
+    });
+
+    const modalElement = document.querySelector(".ant-modal");
+    if (modalElement) {
+      observer.observe(modalElement);
+    }
+
+    return () => {
+      clearTimeout(timeoutId);
+      observer.disconnect();
+    };
+  }, [isOpen]);
 
   // check required fields
   const checkRequiredFields = () => {
@@ -572,8 +624,11 @@ export default function ToolConfigModal({
             className="tool-test-panel"
             style={{
               position: "fixed",
-              top: "10vh",
-              right: "5vw",
+              top: mainModalTop > 0 ? `${mainModalTop}px` : "10vh", // Align with main modal top or fallback to 10vh
+              left:
+                mainModalRight > 0
+                  ? `${mainModalRight + windowWidth * 0.05}px`
+                  : "calc(50% + 300px + 5vw)", // Position to the right of main modal with 5% viewport width gap
               width: "500px",
               height: "auto",
               maxHeight: "80vh",

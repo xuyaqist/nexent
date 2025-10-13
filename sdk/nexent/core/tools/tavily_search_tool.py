@@ -7,6 +7,7 @@ from tavily import TavilyClient
 from smolagents.tools import Tool
 from pydantic import Field
 
+from ..utils.constants import ToolCategory
 from ..utils.observer import MessageObserver, ProcessType
 from ..utils.tools_common_message import SearchResultTextMessage, ToolSign
 
@@ -22,6 +23,7 @@ class TavilySearchTool(Tool):
 
     inputs = {"query": {"type": "string", "description": "The search query to perform."}}
     output_type = "string"
+    category = ToolCategory.SEARCH.value
     tool_sign = ToolSign.TAVILY_SEARCH.value  # Used to distinguish different index sources in summary
 
     def __init__(self, tavily_api_key:str=Field(description="Tavily API key"),
